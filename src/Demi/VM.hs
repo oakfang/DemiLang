@@ -87,8 +87,8 @@ doWhile vars exp (Just True) stmt =
 
 runStatement :: Statement -> Map.Map String Integer -> IO (Map.Map String Integer)
 runStatement Skip vars = return vars
-runStatement (Print var) vars =
-    do printVariable $ Map.lookup var vars
+runStatement (Print exp) vars =
+    do printVariable $ solve vars exp
        return $ vars
 runStatement (Assign var exp) vars = assignVariable vars var (solve vars exp)
 runStatement (When exp onTrue onFalse) vars = doWhen vars (solveBoolean vars exp) onTrue onFalse

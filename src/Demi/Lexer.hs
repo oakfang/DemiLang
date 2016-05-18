@@ -28,6 +28,7 @@ statement' =  ifStmt
           <|> printStmt
           <|> assignStmt
           <|> parensStmt
+          <|> blankStmt
 
 sequenceOfStatements =
     do list <- (sepBy1 statement' semi)
@@ -48,6 +49,9 @@ ifStmt =
         reserved "else"
         stmt2 <- statement
         return $ When cond stmt1 stmt2
+
+blankStmt :: Parser Statement
+blankStmt = whiteSpace >> return Skip
 
 whileStmt :: Parser Statement
 whileStmt =
@@ -70,8 +74,8 @@ skipStmt = reserved "skip" >> return Skip
 printStmt :: Parser Statement
 printStmt =
     do reserved "print"
-       var <- identifier
-       return $ Print var
+       exp <- aExpression
+       return $ Print exp
 
 aExpression :: Parser ArithmeticExpression
 aExpression = buildExpressionParser aOperators aTerm

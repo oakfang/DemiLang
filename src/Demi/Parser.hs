@@ -35,7 +35,7 @@ data Statement = Sequence [Statement]
                | When BooleanExpression Statement Statement
                | While BooleanExpression Statement
                | Skip
-               | Print String
+               | Print ArithmeticExpression
                  deriving (Show)
 
 languageDef =
