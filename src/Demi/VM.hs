@@ -20,6 +20,11 @@ parseFile file =
        Left e  -> print e >> fail "parse error"
        Right r -> return r
 
+parseSymbol :: String -> IO Statement
+parseSymbol file =
+    do program <- readFile file
+       return $ read program
+
 subSolve :: ArithmeticBinaryOperator -> Maybe Integer -> Maybe Integer -> Maybe Integer
 subSolve _ Nothing _ = Nothing
 subSolve _ _ Nothing = Nothing

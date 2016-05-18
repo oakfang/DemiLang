@@ -6,9 +6,9 @@ import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
-data BooleanBinaryOperator = And | Or deriving (Show)
+data BooleanBinaryOperator = And | Or deriving (Show, Read)
 
-data ArithmeticBinaryOperator = Add | Subtract | Multiply | Divide deriving (Show)
+data ArithmeticBinaryOperator = Add | Subtract | Multiply | Divide deriving (Show, Read)
 
 data RelationalBinaryOperator = GreaterThan
                               | LesserThan 
@@ -16,19 +16,19 @@ data RelationalBinaryOperator = GreaterThan
                               | LesserEqualThan 
                               | EqualTo
                               | NotEqualTo
-                                deriving (Show)
+                                deriving (Show, Read)
 
 data ArithmeticExpression = Var String
                           | IntConst Integer
                           | Negative ArithmeticExpression
                           | ArithmeticBinary ArithmeticBinaryOperator ArithmeticExpression ArithmeticExpression
-                            deriving (Show)
+                            deriving (Show, Read)
 
 data BooleanExpression = BoolConst Bool
                        | Not BooleanExpression
                        | BooleanBinary BooleanBinaryOperator BooleanExpression BooleanExpression
                        | RelationalBinary RelationalBinaryOperator ArithmeticExpression ArithmeticExpression
-                         deriving (Show)
+                         deriving (Show, Read)
 
 data Statement = Sequence [Statement]
                | Assign String ArithmeticExpression
@@ -36,7 +36,7 @@ data Statement = Sequence [Statement]
                | While BooleanExpression Statement
                | Skip
                | Print ArithmeticExpression
-                 deriving (Show)
+                 deriving (Show, Read)
 
 languageDef =
     emptyDef { Token.commentStart    = "/*"
