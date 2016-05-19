@@ -112,7 +112,7 @@ assignStmt :: Parser Statement
 assignStmt =
   do var  <- identifier
      reservedOp "="
-     expr <- aExpression
+     expr <- pExpression
      return $ Assign var expr
 
 skipStmt :: Parser Statement
@@ -121,7 +121,7 @@ skipStmt = reserved "skip" >> return Skip
 printStmt :: Parser Statement
 printStmt =
     do reserved "print"
-       msg <- sExpression
+       msg <- pExpression
        return $ Print msg
 
 aExpression :: Parser ArithmeticExpression
@@ -130,8 +130,8 @@ aExpression = buildExpressionParser aOperators aTerm
 bExpression :: Parser BooleanExpression
 bExpression = buildExpressionParser bOperators bTerm
 
-sExpression :: Parser PrintableExpression
-sExpression = buildExpressionParser [] sTerm
+pExpression :: Parser PrintableExpression
+pExpression = buildExpressionParser [] pTerm
 
 aTerm =  parens aExpression
      <|> liftM Var identifier
@@ -142,9 +142,10 @@ bTerm =  parens bExpression
      <|> (reserved "false" >> return (BoolConst False))
      <|> rExpression
 
-sTerm =  parens sExpression
+pTerm =  parens pExpression     
      <|> liftM Message stringLt
      <|> liftM MathMessage aExpression
+     <|> liftM Variable identifier
 
 aOperators = [ [Prefix (reservedOp "-"   >> return (Negative                 ))          ]
              , [Infix  (reservedOp "*"   >> return (ArithmeticBinary Multiply)) AssocLeft,

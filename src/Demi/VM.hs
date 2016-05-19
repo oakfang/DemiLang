@@ -7,6 +7,8 @@ import qualified Data.Map as Map
 import Demi.Parser
 import Demi.Lexer (demiParser)
 
+type VarMap = Map.Map String VariableValue
+
 parseString :: String -> Statement
 parseString str =
   case parse demiParser "" str of
@@ -25,18 +27,18 @@ parseSymbol file =
     do program <- readFile file
        return $ read program
 
-subSolve :: ArithmeticBinaryOperator -> Maybe Integer -> Maybe Integer -> Maybe Integer
-subSolve _ Nothing _ = Nothing
-subSolve _ _ Nothing = Nothing
-subSolve Add (Just x) (Just y) = Just (x + y)
-subSolve Subtract (Just x) (Just y) = Just (x - y)
-subSolve Multiply (Just x) (Just y) = Just (x * y)
-subSolve Divide (Just x) (Just y) = Just (x `div` y)
+subSolve :: ArithmeticBinaryOperator -> Maybe VariableValue -> Maybe VariableValue -> Maybe VariableValue
+subSolve Add (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x + y)
+subSolve Subtract (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x - y)
+subSolve Multiply (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x * y)
+subSolve Divide (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x `div` y)
+subSolve _ _ _ = Nothing
 
-solve :: Map.Map String Integer -> ArithmeticExpression -> Maybe Integer
-solve _ (IntConst x) = Just x
-solve vars (Negative exp) = (solve vars exp) >>= (\x -> Just (-x))
-solve vars (Var var) = Map.lookup var vars
+solve :: VarMap -> ArithmeticExpression -> Maybe VariableValue
+solve _ (IntConst x) = Just $ IntVar x
+solve vars (Negative exp) = (solve vars exp) >>= (\(IntVar x) -> Just $ IntVar (-x))
+solve vars (Var var) = case Map.lookup var vars of Just (IntVar x) -> Just (IntVar x)
+                                                   _ -> Nothing
 solve vars (ArithmeticBinary op e1 e2) =
     let x = solve vars e1
         y = solve vars e2
@@ -48,17 +50,17 @@ subSolveBool _ _ Nothing = Nothing
 subSolveBool And (Just b1) (Just b2) = Just (b1 && b2)
 subSolveBool Or (Just b1) (Just b2) = Just (b1 || b2)
 
-subSolveRel :: RelationalBinaryOperator -> Maybe Integer -> Maybe Integer -> Maybe Bool
+subSolveRel :: RelationalBinaryOperator -> Maybe VariableValue -> Maybe VariableValue -> Maybe Bool
 subSolveRel _ Nothing _ = Nothing
 subSolveRel _ _ Nothing = Nothing
-subSolveRel GreaterThan (Just x) (Just y) = Just (x > y)
-subSolveRel GreaterEqualThan (Just x) (Just y) = Just (x >= y)
-subSolveRel LesserThan (Just x) (Just y) = Just (x < y)
-subSolveRel LesserEqualThan (Just x) (Just y) = Just (x <= y)
-subSolveRel EqualTo (Just x) (Just y) = Just (x == y)
-subSolveRel NotEqualTo (Just x) (Just y) = Just (x /= y)
+subSolveRel GreaterThan (Just (IntVar x)) (Just (IntVar y)) = Just (x > y)
+subSolveRel GreaterEqualThan (Just (IntVar x)) (Just (IntVar y)) = Just (x >= y)
+subSolveRel LesserThan (Just (IntVar x)) (Just (IntVar y)) = Just (x < y)
+subSolveRel LesserEqualThan (Just (IntVar x)) (Just (IntVar y)) = Just (x <= y)
+subSolveRel EqualTo (Just (IntVar x)) (Just (IntVar y)) = Just (x == y)
+subSolveRel NotEqualTo (Just (IntVar x)) (Just (IntVar y)) = Just (x /= y)
 
-solveBoolean :: Map.Map String Integer -> BooleanExpression -> Maybe Bool
+solveBoolean :: VarMap -> BooleanExpression -> Maybe Bool
 solveBoolean _ (BoolConst b) = Just b
 solveBoolean vars (Not exp) = (solveBoolean vars exp) >>= (\x -> Just (not x))
 solveBoolean vars (BooleanBinary op e1 e2) =
@@ -70,27 +72,28 @@ solveBoolean vars (RelationalBinary op e1 e2) =
         y = solve vars e2
     in subSolveRel op x y
 
-printVariable :: Maybe Integer -> IO ()
-printVariable (Just value) = putStrLn $ show value
+printVariable :: Maybe VariableValue -> IO ()
+printVariable (Just (IntVar value)) = putStrLn $ show value
+printVariable (Just (StrVar value)) = putStrLn value
 printVariable Nothing = exitFailure
 
-assignVariable :: Map.Map String Integer -> String -> Maybe Integer -> IO (Map.Map String Integer)
+assignVariable :: VarMap -> String -> Maybe VariableValue -> IO (VarMap)
 assignVariable _ _ Nothing = exitFailure
 assignVariable vars var (Just x) = return $ Map.insert var x vars
 
-doWhen :: Map.Map String Integer -> Maybe Bool -> Statement -> Statement -> IO (Map.Map String Integer)
+doWhen :: VarMap -> Maybe Bool -> Statement -> Statement -> IO (VarMap)
 doWhen _ Nothing _ _ = exitFailure
 doWhen vars (Just True) stmt _ = runStatement stmt vars
 doWhen vars (Just False) _ stmt = runStatement stmt vars
 
-doWhile :: Map.Map String Integer -> BooleanExpression -> Maybe Bool -> Statement -> IO (Map.Map String Integer)
+doWhile :: VarMap -> BooleanExpression -> Maybe Bool -> Statement -> IO (VarMap)
 doWhile _ _ Nothing _ = exitFailure
 doWhile vars _ (Just False) _ = return vars
 doWhile vars exp (Just True) stmt =
     do newVars <- runStatement stmt vars
        doWhile newVars exp (solveBoolean newVars exp) stmt
 
-runStatement :: Statement -> Map.Map String Integer -> IO (Map.Map String Integer)
+runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars
 runStatement (Print (MathMessage exp)) vars =
     do printVariable $ solve vars exp
@@ -98,7 +101,12 @@ runStatement (Print (MathMessage exp)) vars =
 runStatement (Print (Message str)) vars =
     do putStrLn str
        return vars
-runStatement (Assign var exp) vars = assignVariable vars var (solve vars exp)
+runStatement (Print (Variable var)) vars =
+    do printVariable $ Map.lookup var vars
+       return $ vars
+runStatement (Assign var (MathMessage exp)) vars = assignVariable vars var (solve vars exp)
+runStatement (Assign var (Message value)) vars = assignVariable vars var $ Just $ StrVar value
+runStatement (Assign var (Variable value)) vars = assignVariable vars var $ Map.lookup value vars
 runStatement (When exp onTrue onFalse) vars = doWhen vars (solveBoolean vars exp) onTrue onFalse
 runStatement (While exp loopBody) vars = doWhile vars exp (solveBoolean vars exp) loopBody
 runStatement (Sequence []) vars = return vars
