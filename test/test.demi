@@ -11,4 +11,7 @@ if a > b {
 print b; // prints 15
 hello = "hello " + "world!";
 print hello;
-print x;
+should hello == "hello world!" {
+    print "I'm gonna fail now, with a red error";
+    print x;
+}

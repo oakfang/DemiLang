@@ -13,10 +13,10 @@ runStatement (Assign var exp) vars =
     do value <- solve vars exp
        assignVariable vars var value
 runStatement (When exp onTrue onFalse) vars =
-    do value <- solveBoolean vars exp
+    do value <- solve vars exp
        doWhen vars value onTrue onFalse runStatement
 runStatement (While exp loopBody) vars = 
-    do value <- solveBoolean vars exp
+    do value <- solve vars exp
        doWhile vars exp value loopBody runStatement
 runStatement (Sequence []) vars = return vars
 runStatement (Sequence (st:sts)) vars =

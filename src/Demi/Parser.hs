@@ -6,39 +6,37 @@ import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
-data VariableValue = IntVar Integer | StrVar String deriving (Show, Read)
+data VariableValue = IntVar Integer | StrVar String | BoolVar Bool deriving (Show, Read)
 
-data BooleanBinaryOperator = And | Or deriving (Show, Read)
+data BinaryOperator = Add
+                    | Subtract
+                    | Multiply
+                    | Divide
+                    | And
+                    | Or
+                    | GreaterThan
+                    | LesserThan 
+                    | GreaterEqualThan 
+                    | LesserEqualThan 
+                    | EqualTo
+                    | NotEqualTo
+                      deriving (Show, Read)
 
-data ArithmeticBinaryOperator = Add | Subtract | Multiply | Divide deriving (Show, Read)
-
-data RelationalBinaryOperator = GreaterThan
-                              | LesserThan 
-                              | GreaterEqualThan 
-                              | LesserEqualThan 
-                              | EqualTo
-                              | NotEqualTo
-                                deriving (Show, Read)
-
-data ArithmeticExpression = Var String
-                          | IntConst Integer
-                          | StrConst String
-                          | Negative ArithmeticExpression
-                          | ArithmeticBinary ArithmeticBinaryOperator ArithmeticExpression ArithmeticExpression
-                            deriving (Show, Read)
-
-data BooleanExpression = BoolConst Bool
-                       | Not BooleanExpression
-                       | BooleanBinary BooleanBinaryOperator BooleanExpression BooleanExpression
-                       | RelationalBinary RelationalBinaryOperator ArithmeticExpression ArithmeticExpression
-                         deriving (Show, Read)
+data Expression = Var String
+                | IntConst Integer
+                | StrConst String
+                | BoolConst Bool
+                | Not Expression
+                | Negative Expression
+                | BinaryExpression BinaryOperator Expression Expression
+                  deriving (Show, Read)
 
 data Statement = Sequence [Statement]
-               | Assign String ArithmeticExpression
-               | When BooleanExpression Statement Statement
-               | While BooleanExpression Statement
+               | Assign String Expression
+               | When Expression Statement Statement
+               | While Expression Statement
                | Skip
-               | Print ArithmeticExpression
+               | Print Expression
                  deriving (Show, Read)
 
 languageDef =
@@ -49,6 +47,7 @@ languageDef =
              , Token.identLetter     = alphaNum
              , Token.reservedNames   = [ "if"
                                        , "else"
+                                       , "should"
                                        , "while"
                                        , "skip"
                                        , "print"
