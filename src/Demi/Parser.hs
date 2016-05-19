@@ -22,6 +22,7 @@ data RelationalBinaryOperator = GreaterThan
 
 data ArithmeticExpression = Var String
                           | IntConst Integer
+                          | StrConst String
                           | Negative ArithmeticExpression
                           | ArithmeticBinary ArithmeticBinaryOperator ArithmeticExpression ArithmeticExpression
                             deriving (Show, Read)
@@ -32,14 +33,12 @@ data BooleanExpression = BoolConst Bool
                        | RelationalBinary RelationalBinaryOperator ArithmeticExpression ArithmeticExpression
                          deriving (Show, Read)
 
-data PrintableExpression = MathMessage ArithmeticExpression | Message String deriving (Show, Read)
-
 data Statement = Sequence [Statement]
-               | Assign String PrintableExpression
+               | Assign String ArithmeticExpression
                | When BooleanExpression Statement Statement
                | While BooleanExpression Statement
                | Skip
-               | Print PrintableExpression
+               | Print ArithmeticExpression
                  deriving (Show, Read)
 
 languageDef =

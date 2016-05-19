@@ -27,88 +27,88 @@ parseSymbol file =
     do program <- readFile file
        return $ read program
 
-subSolve :: ArithmeticBinaryOperator -> Maybe VariableValue -> Maybe VariableValue -> Maybe VariableValue
-subSolve Add (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x + y)
-subSolve Subtract (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x - y)
-subSolve Multiply (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x * y)
-subSolve Divide (Just (IntVar x)) (Just (IntVar y)) = Just $ IntVar (x `div` y)
-subSolve _ _ _ = Nothing
+subSolve :: ArithmeticBinaryOperator -> VariableValue -> VariableValue -> IO VariableValue
+subSolve Add (IntVar x) (IntVar y) = return $ IntVar (x + y)
+subSolve Add (StrVar x) (StrVar y) = return $ StrVar (x ++ y)
+subSolve Subtract (IntVar x) (IntVar y) = return $ IntVar (x - y)
+subSolve Multiply (IntVar x) (IntVar y) = return $ IntVar (x * y)
+subSolve Divide (IntVar x) (IntVar y) = return $ IntVar (x `div` y)
+subSolve _ _ _ = fail "Unsupported operation for values"
 
-solve :: VarMap -> ArithmeticExpression -> Maybe VariableValue
-solve _ (IntConst x) = Just $ IntVar x
-solve vars (Negative exp) = (solve vars exp) >>= (\(IntVar x) -> Just $ IntVar (-x))
-solve vars (Var var) = case Map.lookup var vars of Just (IntVar x) -> Just (IntVar x)
-                                                   _ -> Nothing
+solve :: VarMap -> ArithmeticExpression -> IO VariableValue
+solve _ (IntConst x) = return $ IntVar x
+solve _ (StrConst x) = return $ StrVar x
+solve vars (Negative exp) =
+    do value <- solve vars exp
+       case value of IntVar x -> return $ IntVar(-x)
+                     _ -> fail "Only numerical values can be inverted"
+solve vars (Var var) = case Map.lookup var vars of Just x -> return $ x
+                                                   Nothing -> fail $ "Name error: " ++ var
 solve vars (ArithmeticBinary op e1 e2) =
-    let x = solve vars e1
-        y = solve vars e2
-    in subSolve op x y
+    do x <- solve vars e1
+       y <- solve vars e2
+       subSolve op x y
 
-subSolveBool :: BooleanBinaryOperator -> Maybe Bool -> Maybe Bool -> Maybe Bool
-subSolveBool _ Nothing _ = Nothing
-subSolveBool _ _ Nothing = Nothing
-subSolveBool And (Just b1) (Just b2) = Just (b1 && b2)
-subSolveBool Or (Just b1) (Just b2) = Just (b1 || b2)
+subSolveBool :: BooleanBinaryOperator -> Bool -> Bool -> Bool
+subSolveBool And b1 b2 = b1 && b2
+subSolveBool Or  b1 b2 = b1 || b2
 
-subSolveRel :: RelationalBinaryOperator -> Maybe VariableValue -> Maybe VariableValue -> Maybe Bool
-subSolveRel _ Nothing _ = Nothing
-subSolveRel _ _ Nothing = Nothing
-subSolveRel GreaterThan (Just (IntVar x)) (Just (IntVar y)) = Just (x > y)
-subSolveRel GreaterEqualThan (Just (IntVar x)) (Just (IntVar y)) = Just (x >= y)
-subSolveRel LesserThan (Just (IntVar x)) (Just (IntVar y)) = Just (x < y)
-subSolveRel LesserEqualThan (Just (IntVar x)) (Just (IntVar y)) = Just (x <= y)
-subSolveRel EqualTo (Just (IntVar x)) (Just (IntVar y)) = Just (x == y)
-subSolveRel NotEqualTo (Just (IntVar x)) (Just (IntVar y)) = Just (x /= y)
+subSolveRel :: RelationalBinaryOperator -> VariableValue -> VariableValue -> IO Bool
+subSolveRel GreaterThan      (IntVar x) (IntVar y) = return $ x > y
+subSolveRel GreaterEqualThan (IntVar x) (IntVar y) = return $ x >= y
+subSolveRel LesserThan       (IntVar x) (IntVar y) = return $ x < y
+subSolveRel LesserEqualThan  (IntVar x) (IntVar y) = return $ x <= y
+subSolveRel EqualTo          (IntVar x) (IntVar y) = return $ x == y
+subSolveRel NotEqualTo       (IntVar x) (IntVar y) = return $ x /= y
+subSolveRel _                _          _          = fail "Unsupported operation for values"
 
-solveBoolean :: VarMap -> BooleanExpression -> Maybe Bool
-solveBoolean _ (BoolConst b) = Just b
-solveBoolean vars (Not exp) = (solveBoolean vars exp) >>= (\x -> Just (not x))
+solveBoolean :: VarMap -> BooleanExpression -> IO Bool
+solveBoolean _ (BoolConst b) = return $ b
+solveBoolean vars (Not exp) = 
+    do value <- solveBoolean vars exp
+       return $ not value
 solveBoolean vars (BooleanBinary op e1 e2) =
-    let x = solveBoolean vars e1
-        y = solveBoolean vars e2
-    in subSolveBool op x y
+    do x <- solveBoolean vars e1
+       y <- solveBoolean vars e2
+       return $ subSolveBool op x y
 solveBoolean vars (RelationalBinary op e1 e2) =
-    let x = solve vars e1
-        y = solve vars e2
-    in subSolveRel op x y
+    do x <- solve vars e1
+       y <- solve vars e2
+       subSolveRel op x y
 
-printVariable :: Maybe VariableValue -> IO ()
-printVariable (Just (IntVar value)) = putStrLn $ show value
-printVariable (Just (StrVar value)) = putStrLn value
-printVariable Nothing = fail "Name error"
+printVariable :: VariableValue -> IO ()
+printVariable (IntVar value) = putStrLn $ show value
+printVariable (StrVar value) = putStrLn value
 
-assignVariable :: VarMap -> String -> Maybe VariableValue -> IO (VarMap)
-assignVariable _ _ Nothing = exitFailure
-assignVariable vars var (Just x) = return $ Map.insert var x vars
+assignVariable :: VarMap -> String -> VariableValue -> IO (VarMap)
+assignVariable vars var x = return $ Map.insert var x vars
 
-doWhen :: VarMap -> Maybe Bool -> Statement -> Statement -> IO (VarMap)
-doWhen _ Nothing _ _ = exitFailure
-doWhen vars (Just True) stmt _ = runStatement stmt vars
-doWhen vars (Just False) _ stmt = runStatement stmt vars
+doWhen :: VarMap -> Bool -> Statement -> Statement -> IO (VarMap)
+doWhen vars True stmt _ = runStatement stmt vars
+doWhen vars False _ stmt = runStatement stmt vars
 
-doWhile :: VarMap -> BooleanExpression -> Maybe Bool -> Statement -> IO (VarMap)
-doWhile _ _ Nothing _ = exitFailure
-doWhile vars _ (Just False) _ = return vars
-doWhile vars exp (Just True) stmt =
+doWhile :: VarMap -> BooleanExpression -> Bool -> Statement -> IO (VarMap)
+doWhile vars _ False _ = return vars
+doWhile vars exp True stmt =
     do newVars <- runStatement stmt vars
-       doWhile newVars exp (solveBoolean newVars exp) stmt
-
-unref :: VarMap -> ArithmeticExpression -> Maybe VariableValue
-unref vars (Var var) = Map.lookup var vars
-unref vars exp = solve vars exp
+       value <- solveBoolean newVars exp
+       doWhile newVars exp value stmt
 
 runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars
-runStatement (Print (MathMessage exp)) vars =
-    do printVariable $ unref vars exp
+runStatement (Print exp) vars =
+    do value <- solve vars exp
+       printVariable value
        return $ vars
-runStatement (Print (Message str)) vars =
-    do putStrLn str
-       return vars
-runStatement (Assign var (MathMessage exp)) vars = assignVariable vars var (unref vars exp)
-runStatement (Assign var (Message value)) vars = assignVariable vars var $ Just $ StrVar value
-runStatement (When exp onTrue onFalse) vars = doWhen vars (solveBoolean vars exp) onTrue onFalse
-runStatement (While exp loopBody) vars = doWhile vars exp (solveBoolean vars exp) loopBody
+runStatement (Assign var exp) vars = 
+    do value <- solve vars exp
+       assignVariable vars var value
+runStatement (When exp onTrue onFalse) vars =
+    do value <- solveBoolean vars exp
+       doWhen vars value onTrue onFalse
+runStatement (While exp loopBody) vars = 
+    do value <- solveBoolean vars exp
+       doWhile vars exp value loopBody
 runStatement (Sequence []) vars = return vars
 runStatement (Sequence (st:sts)) vars =
     do newVars <- runStatement st vars
