@@ -2,6 +2,7 @@ module Demi.VM where
 
 import Text.ParserCombinators.Parsec
 import System.Exit
+import System.IO
 import qualified Data.Map as Map
 
 import Demi.Parser
@@ -26,6 +27,23 @@ parseSymbol :: String -> IO Statement
 parseSymbol file =
     do program <- readFile file
        return $ read program
+
+promptLine :: String -> IO String
+promptLine prompt =
+    do putStr prompt
+       hFlush stdout
+       getLine
+
+executeLine :: String -> VarMap -> IO (VarMap)
+executeLine line vars =
+    let stmt = parseString line
+    in runStatement stmt vars
+
+executeRepl :: VarMap -> IO (VarMap)
+executeRepl vars =
+    do line <- promptLine "demi> "
+       newVars <- executeLine line vars
+       executeRepl newVars
 
 subSolve :: ArithmeticBinaryOperator -> VariableValue -> VariableValue -> IO VariableValue
 subSolve Add (IntVar x) (IntVar y) = return $ IntVar (x + y)
