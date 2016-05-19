@@ -32,7 +32,7 @@ data BooleanExpression = BoolConst Bool
                        | RelationalBinary RelationalBinaryOperator ArithmeticExpression ArithmeticExpression
                          deriving (Show, Read)
 
-data PrintableExpression = MathMessage ArithmeticExpression | Message String | Variable String deriving (Show, Read)
+data PrintableExpression = MathMessage ArithmeticExpression | Message String deriving (Show, Read)
 
 data Statement = Sequence [Statement]
                | Assign String PrintableExpression

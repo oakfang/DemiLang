@@ -145,7 +145,6 @@ bTerm =  parens bExpression
 pTerm =  parens pExpression     
      <|> liftM Message stringLt
      <|> liftM MathMessage aExpression
-     <|> liftM Variable identifier
 
 aOperators = [ [Prefix (reservedOp "-"   >> return (Negative                 ))          ]
              , [Infix  (reservedOp "*"   >> return (ArithmeticBinary Multiply)) AssocLeft,

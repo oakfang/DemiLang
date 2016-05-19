@@ -75,7 +75,7 @@ solveBoolean vars (RelationalBinary op e1 e2) =
 printVariable :: Maybe VariableValue -> IO ()
 printVariable (Just (IntVar value)) = putStrLn $ show value
 printVariable (Just (StrVar value)) = putStrLn value
-printVariable Nothing = exitFailure
+printVariable Nothing = fail "Name error"
 
 assignVariable :: VarMap -> String -> Maybe VariableValue -> IO (VarMap)
 assignVariable _ _ Nothing = exitFailure
@@ -93,20 +93,20 @@ doWhile vars exp (Just True) stmt =
     do newVars <- runStatement stmt vars
        doWhile newVars exp (solveBoolean newVars exp) stmt
 
+unref :: VarMap -> ArithmeticExpression -> Maybe VariableValue
+unref vars (Var var) = Map.lookup var vars
+unref vars exp = solve vars exp
+
 runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars
 runStatement (Print (MathMessage exp)) vars =
-    do printVariable $ solve vars exp
+    do printVariable $ unref vars exp
        return $ vars
 runStatement (Print (Message str)) vars =
     do putStrLn str
        return vars
-runStatement (Print (Variable var)) vars =
-    do printVariable $ Map.lookup var vars
-       return $ vars
-runStatement (Assign var (MathMessage exp)) vars = assignVariable vars var (solve vars exp)
+runStatement (Assign var (MathMessage exp)) vars = assignVariable vars var (unref vars exp)
 runStatement (Assign var (Message value)) vars = assignVariable vars var $ Just $ StrVar value
-runStatement (Assign var (Variable value)) vars = assignVariable vars var $ Map.lookup value vars
 runStatement (When exp onTrue onFalse) vars = doWhen vars (solveBoolean vars exp) onTrue onFalse
 runStatement (While exp loopBody) vars = doWhile vars exp (solveBoolean vars exp) loopBody
 runStatement (Sequence []) vars = return vars
