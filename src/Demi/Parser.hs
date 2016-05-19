@@ -30,12 +30,14 @@ data BooleanExpression = BoolConst Bool
                        | RelationalBinary RelationalBinaryOperator ArithmeticExpression ArithmeticExpression
                          deriving (Show, Read)
 
+data PrintableExpression = MathMessage ArithmeticExpression | Message String deriving (Show, Read)
+
 data Statement = Sequence [Statement]
                | Assign String ArithmeticExpression
                | When BooleanExpression Statement Statement
                | While BooleanExpression Statement
                | Skip
-               | Print ArithmeticExpression
+               | Print PrintableExpression
                  deriving (Show, Read)
 
 languageDef =
@@ -45,10 +47,8 @@ languageDef =
              , Token.identStart      = letter
              , Token.identLetter     = alphaNum
              , Token.reservedNames   = [ "if"
-                                       , "then"
                                        , "else"
                                        , "while"
-                                       , "do"
                                        , "skip"
                                        , "print"
                                        , "true"
@@ -57,7 +57,7 @@ languageDef =
                                        , "and"
                                        , "or"
                                        ]
-             , Token.reservedOpNames = ["+", "-", "*", "/", ":="
+             , Token.reservedOpNames = ["+", "-", "*", "/", "="
                                        , "<", ">", "and", "or", "not"
                                        , "<=", ">=", "==", "!="
                                        ]

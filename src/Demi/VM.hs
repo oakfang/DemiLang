@@ -92,9 +92,12 @@ doWhile vars exp (Just True) stmt =
 
 runStatement :: Statement -> Map.Map String Integer -> IO (Map.Map String Integer)
 runStatement Skip vars = return vars
-runStatement (Print exp) vars =
+runStatement (Print (MathMessage exp)) vars =
     do printVariable $ solve vars exp
        return $ vars
+runStatement (Print (Message str)) vars =
+    do putStrLn str
+       return vars
 runStatement (Assign var exp) vars = assignVariable vars var (solve vars exp)
 runStatement (When exp onTrue onFalse) vars = doWhen vars (solveBoolean vars exp) onTrue onFalse
 runStatement (While exp loopBody) vars = doWhile vars exp (solveBoolean vars exp) loopBody

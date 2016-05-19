@@ -19,15 +19,15 @@ demi.exe exec <filepath> -- run a pre-parsed AST symbols file
 
 ## Demo code
 ```
-a := 5;
-b := 3;
-(
-    if a > b then
-        while b < (a * 3) do (
-            c := 1;
-            b := b + c;
-        );
-    else skip;
-);
+print "Hello, world!";
+a = 5;
+b = 3;
+if a > b {
+    while b < (a * 3) {
+        c = 1;
+        b = b + c;
+    }
+} else if a == b print 7
+  else print 9;
 print b; // prints 15
 ```

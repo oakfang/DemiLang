@@ -10,16 +10,18 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 import Demi.Parser
 
 lexer = Token.makeTokenParser languageDef
-identifier = Token.identifier lexer -- parses an identifier
-reserved   = Token.reserved   lexer -- parses a reserved name
-reservedOp = Token.reservedOp lexer -- parses an operator
-parens     = Token.parens     lexer -- parses surrounding parenthesis:
-                                    --   parens p
-                                    -- takes care of the parenthesis and
-                                    -- uses p to parse what's inside them
-integer    = Token.integer    lexer -- parses an integer
-semi       = Token.semi       lexer -- parses a semicolon
-whiteSpace = Token.whiteSpace lexer -- parses whitespace
+identifier = Token.identifier    lexer -- parses an identifier
+reserved   = Token.reserved      lexer -- parses a reserved name
+reservedOp = Token.reservedOp    lexer -- parses an operator
+parens     = Token.parens        lexer -- parses surrounding parenthesis:
+                                       --   parens p
+                                       -- takes care of the parenthesis and
+                                       -- uses p to parse what's inside them
+braces     = Token.braces        lexer
+integer    = Token.integer       lexer -- parses an integer
+semi       = Token.semi          lexer -- parses a semicolon
+whiteSpace = Token.whiteSpace    lexer -- parses whitespace
+stringLt   = Token.stringLiteral lexer
 
 statement' :: Parser Statement
 statement' =  ifStmt
@@ -28,6 +30,7 @@ statement' =  ifStmt
           <|> printStmt
           <|> assignStmt
           <|> parensStmt
+          <|> bracesStmt
           <|> blankStmt
 
 sequenceOfStatements =
@@ -40,31 +43,75 @@ statement =  parensStmt <|> sequenceOfStatements
 parensStmt :: Parser Statement
 parensStmt = parens statement
 
+bracesStmt :: Parser Statement
+bracesStmt = braces statement
+
+singleIfSingleElseStmt :: Parser Statement
+singleIfSingleElseStmt =
+    do reserved "if"
+       cond <- bExpression
+       onTrue <- statement'
+       reserved "else"
+       onFalse <- statement'
+       return $ When cond onTrue onFalse
+
+blockIfSingleElseStmt :: Parser Statement
+blockIfSingleElseStmt =
+    do reserved "if"
+       cond <- bExpression
+       onTrue <- bracesStmt
+       reserved "else"
+       onFalse <- statement'
+       return $ When cond onTrue onFalse
+
+singleIfBlockElseStmt :: Parser Statement
+singleIfBlockElseStmt =
+    do reserved "if"
+       cond <- bExpression
+       onTrue <- statement'
+       reserved "else"
+       onFalse <- bracesStmt
+       return $ When cond onTrue onFalse
+
+blockIfBlockElseStmt :: Parser Statement
+blockIfBlockElseStmt =
+    do reserved "if"
+       cond <- bExpression
+       onTrue <- bracesStmt
+       reserved "else"
+       onFalse <- bracesStmt
+       return $ When cond onTrue onFalse
+
 ifStmt :: Parser Statement
-ifStmt =
-     do reserved "if"
-        cond <- bExpression
-        reserved "then"
-        stmt1 <- statement
-        reserved "else"
-        stmt2 <- statement
-        return $ When cond stmt1 stmt2
+ifStmt =  singleIfSingleElseStmt
+      <|> singleIfBlockElseStmt
+      <|> blockIfSingleElseStmt
+      <|> blockIfBlockElseStmt
 
 blankStmt :: Parser Statement
 blankStmt = whiteSpace >> return Skip
 
+singleWhileStmt :: Parser Statement
+singleWhileStmt =
+    do reserved "while"
+       cond <- bExpression
+       stmt <- statement'
+       return $ While cond stmt
+
+blockWhileStmt :: Parser Statement
+blockWhileStmt =
+    do reserved "while"
+       cond <- bExpression
+       stmt <- bracesStmt
+       return $ While cond stmt
+
 whileStmt :: Parser Statement
-whileStmt =
-  do reserved "while"
-     cond <- bExpression
-     reserved "do"
-     stmt <- statement
-     return $ While cond stmt
+whileStmt = singleWhileStmt <|> blockWhileStmt
 
 assignStmt :: Parser Statement
 assignStmt =
   do var  <- identifier
-     reservedOp ":="
+     reservedOp "="
      expr <- aExpression
      return $ Assign var expr
 
@@ -74,14 +121,17 @@ skipStmt = reserved "skip" >> return Skip
 printStmt :: Parser Statement
 printStmt =
     do reserved "print"
-       exp <- aExpression
-       return $ Print exp
+       msg <- sExpression
+       return $ Print msg
 
 aExpression :: Parser ArithmeticExpression
 aExpression = buildExpressionParser aOperators aTerm
 
 bExpression :: Parser BooleanExpression
 bExpression = buildExpressionParser bOperators bTerm
+
+sExpression :: Parser PrintableExpression
+sExpression = buildExpressionParser [] sTerm
 
 aTerm =  parens aExpression
      <|> liftM Var identifier
@@ -91,6 +141,10 @@ bTerm =  parens bExpression
      <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "false" >> return (BoolConst False))
      <|> rExpression
+
+sTerm =  parens sExpression
+     <|> liftM Message stringLt
+     <|> liftM MathMessage aExpression
 
 aOperators = [ [Prefix (reservedOp "-"   >> return (Negative                 ))          ]
              , [Infix  (reservedOp "*"   >> return (ArithmeticBinary Multiply)) AssocLeft,
