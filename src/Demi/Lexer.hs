@@ -18,6 +18,7 @@ parens     = Token.parens        lexer -- parses surrounding parenthesis:
                                        -- takes care of the parenthesis and
                                        -- uses p to parse what's inside them
 braces     = Token.braces        lexer
+brackets   = Token.brackets      lexer
 integer    = Token.integer       lexer -- parses an integer
 semi       = Token.semi          lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace    lexer -- parses whitespace
@@ -32,6 +33,7 @@ statement' =  ifStmt
           <|> assignStmt
           <|> parensStmt
           <|> bracesStmt
+          <|> bareStmt
           <|> blankStmt
 
 sequenceOfStatements =
@@ -50,7 +52,7 @@ bracesStmt = braces statement
 singleIfSingleElseStmt :: Parser Statement
 singleIfSingleElseStmt =
     do reserved "if"
-       cond <- aExpression
+       cond <- expression
        onTrue <- statement'
        reserved "else"
        onFalse <- statement'
@@ -59,7 +61,7 @@ singleIfSingleElseStmt =
 blockIfSingleElseStmt :: Parser Statement
 blockIfSingleElseStmt =
     do reserved "if"
-       cond <- aExpression
+       cond <- expression
        onTrue <- bracesStmt
        reserved "else"
        onFalse <- statement'
@@ -68,7 +70,7 @@ blockIfSingleElseStmt =
 singleIfBlockElseStmt :: Parser Statement
 singleIfBlockElseStmt =
     do reserved "if"
-       cond <- aExpression
+       cond <- expression
        onTrue <- statement'
        reserved "else"
        onFalse <- bracesStmt
@@ -77,7 +79,7 @@ singleIfBlockElseStmt =
 blockIfBlockElseStmt :: Parser Statement
 blockIfBlockElseStmt =
     do reserved "if"
-       cond <- aExpression
+       cond <- expression
        onTrue <- bracesStmt
        reserved "else"
        onFalse <- bracesStmt
@@ -92,14 +94,14 @@ ifStmt =  singleIfSingleElseStmt
 singleShouldStatement :: Parser Statement
 singleShouldStatement =
     do reserved "should"
-       cond <- aExpression
+       cond <- expression
        onTrue <- statement'
        return $ When cond onTrue Skip
 
 blockShouldStatement :: Parser Statement
 blockShouldStatement =
     do reserved "should"
-       cond <- aExpression
+       cond <- expression
        onTrue <- bracesStmt
        return $ When cond onTrue Skip
 
@@ -112,14 +114,14 @@ blankStmt = whiteSpace >> return Skip
 singleWhileStmt :: Parser Statement
 singleWhileStmt =
     do reserved "while"
-       cond <- aExpression
+       cond <- expression
        stmt <- statement'
        return $ While cond stmt
 
 blockWhileStmt :: Parser Statement
 blockWhileStmt =
     do reserved "while"
-       cond <- aExpression
+       cond <- expression
        stmt <- bracesStmt
        return $ While cond stmt
 
@@ -130,7 +132,7 @@ assignStmt :: Parser Statement
 assignStmt =
   do var  <- identifier
      reservedOp "="
-     expr <- aExpression
+     expr <- expression
      return $ Assign var expr
 
 skipStmt :: Parser Statement
@@ -139,34 +141,54 @@ skipStmt = reserved "skip" >> return Skip
 printStmt :: Parser Statement
 printStmt =
     do reserved "print"
-       msg <- aExpression
+       msg <- expression
        return $ Print msg
 
-aExpression :: Parser Expression
-aExpression = buildExpressionParser aOperators aTerm
+bareStmt :: Parser Statement
+bareStmt =
+    do reserved "do"
+       expr <- expression
+       return $ Bare expr
 
-aTerm =  parens aExpression
-     <|> liftM Var identifier
-     <|> liftM IntConst integer
-     <|> liftM StrConst stringLt
-     <|> (reserved "true"  >> return (BoolConst True ))
-     <|> (reserved "false" >> return (BoolConst False))
+expression :: Parser Expression
+expression = buildExpressionParser operators term
 
-aOperators = [ [Prefix (reservedOp "-"   >> return (Negative                         ))          ]
-             , [Infix  (reservedOp "*"   >> return (BinaryExpression Multiply        )) AssocLeft,
-                Infix  (reservedOp "/"   >> return (BinaryExpression Divide          )) AssocLeft]
-             , [Infix  (reservedOp "+"   >> return (BinaryExpression Add             )) AssocLeft,
-                Infix  (reservedOp "-"   >> return (BinaryExpression Subtract        )) AssocLeft]
-             , [Infix  (reservedOp ">"   >> return (BinaryExpression GreaterThan     )) AssocLeft,
-                Infix  (reservedOp "<"   >> return (BinaryExpression LesserThan      )) AssocLeft]
-             , [Infix  (reservedOp ">="  >> return (BinaryExpression GreaterEqualThan)) AssocLeft,
-                Infix  (reservedOp "<="  >> return (BinaryExpression LesserEqualThan )) AssocLeft]
-             , [Infix  (reservedOp "=="  >> return (BinaryExpression EqualTo         )) AssocLeft,
-                Infix  (reservedOp "!="  >> return (BinaryExpression NotEqualTo      )) AssocLeft]
-             , [Prefix (reservedOp "not" >> return (Not                              ))          ]
-             , [Infix  (reservedOp "and" >> return (BinaryExpression And             )) AssocLeft,
-                Infix  (reservedOp "or"  >> return (BinaryExpression Or              )) AssocLeft]
-             ]
+callExpr =
+    do reserved "call"
+       id <- identifier
+       param <- brackets expression
+       return $ CallExpression id param
+
+fnTerm =
+    do reserved "fn"
+       param <- brackets identifier
+       stmt <- bracesStmt
+       return $ FnConst param stmt
+
+term =  parens expression
+    <|> liftM Var identifier
+    <|> liftM IntConst integer
+    <|> liftM StrConst stringLt
+    <|> fnTerm
+    <|> callExpr
+    <|> (reserved "true"  >> return (BoolConst True ))
+    <|> (reserved "false" >> return (BoolConst False))
+
+operators = [ [Prefix (reservedOp "-"   >> return (Negative                         ))          ]
+            , [Infix  (reservedOp "*"   >> return (BinaryExpression Multiply        )) AssocLeft,
+               Infix  (reservedOp "/"   >> return (BinaryExpression Divide          )) AssocLeft]
+            , [Infix  (reservedOp "+"   >> return (BinaryExpression Add             )) AssocLeft,
+               Infix  (reservedOp "-"   >> return (BinaryExpression Subtract        )) AssocLeft]
+            , [Infix  (reservedOp ">"   >> return (BinaryExpression GreaterThan     )) AssocLeft,
+               Infix  (reservedOp "<"   >> return (BinaryExpression LesserThan      )) AssocLeft]
+            , [Infix  (reservedOp ">="  >> return (BinaryExpression GreaterEqualThan)) AssocLeft,
+               Infix  (reservedOp "<="  >> return (BinaryExpression LesserEqualThan )) AssocLeft]
+            , [Infix  (reservedOp "=="  >> return (BinaryExpression EqualTo         )) AssocLeft,
+               Infix  (reservedOp "!="  >> return (BinaryExpression NotEqualTo      )) AssocLeft]
+            , [Prefix (reservedOp "not" >> return (Not                              ))          ]
+            , [Infix  (reservedOp "and" >> return (BinaryExpression And             )) AssocLeft,
+               Infix  (reservedOp "or"  >> return (BinaryExpression Or              )) AssocLeft]
+            ]
 
 
 demiParser :: Parser Statement

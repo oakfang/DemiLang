@@ -6,7 +6,11 @@ import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
-data VariableValue = IntVar Integer | StrVar String | BoolVar Bool deriving (Show, Read)
+data VariableValue = IntVar Integer
+                   | StrVar String
+                   | BoolVar Bool
+                   | FnVar String Statement
+                     deriving (Show, Read)
 
 data BinaryOperator = Add
                     | Subtract
@@ -26,9 +30,11 @@ data Expression = Var String
                 | IntConst Integer
                 | StrConst String
                 | BoolConst Bool
+                | FnConst String Statement
                 | Not Expression
                 | Negative Expression
                 | BinaryExpression BinaryOperator Expression Expression
+                | CallExpression String Expression
                   deriving (Show, Read)
 
 data Statement = Sequence [Statement]
@@ -37,6 +43,7 @@ data Statement = Sequence [Statement]
                | While Expression Statement
                | Skip
                | Print Expression
+               | Bare Expression
                  deriving (Show, Read)
 
 languageDef =
@@ -48,6 +55,9 @@ languageDef =
              , Token.reservedNames   = [ "if"
                                        , "else"
                                        , "should"
+                                       , "fn"
+                                       , "call"
+                                       , "do"
                                        , "while"
                                        , "skip"
                                        , "print"

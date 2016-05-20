@@ -19,7 +19,14 @@ demi.exe                  -- run demi in stdin interpreter mode
 
 ## Demo code
 ```
-print "Hello, world!";
+greet = fn [name] {
+    print "Hello, " + name + "!";
+};
+
+do call greet["world"];
+f = fn [x] {
+    print x;
+};
 a = 5;
 b = 3;
 if a > b {
@@ -31,8 +38,8 @@ if a > b {
   else print 9;
 print b; // prints 15
 hello = "hello " + "world!";
-print hello;
 should hello == "hello world!" {
+    do call f[5];
     print "I'm gonna fail now, with a red error";
     print x;
 }

@@ -6,8 +6,7 @@ import qualified Data.Map as Map
 
 import Demi.Parser
 import Demi.Lexer (demiParser)
-import Demi.Utils (VarMap)
-import Demi.VM (runStatement)
+import Demi.VM (runStatement, VarMap)
 
 parseString :: String -> Statement
 parseString str =
