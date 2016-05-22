@@ -1,3 +1,3 @@
-import "./test/utils.dm";
+import "utils.dm";
 
 .print[addFive[3]];

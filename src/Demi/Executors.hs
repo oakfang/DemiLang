@@ -9,8 +9,22 @@ import Demi.Lexer (demiParser)
 import Demi.VM (runStatement, errorOut)
 import Demi.StdLib (stdlib, libOf)
 
+joinPath :: [String] -> String
+joinPath [] = ""
+joinPath (x:xs) = x ++ "/" ++ (joinPath xs)
+
+splitOn :: (Char -> Bool) -> String -> [String]
+splitOn p s = case dropWhile p s of "" -> []
+                                    s' -> w:splitOn p s''
+                                          where (w, s'') = break p s'
+
+baseDir :: String -> String
+baseDir path = joinPath $ init $ splitOn (=='/') path
+
 importFile :: VarMap -> VariableValue -> IO VarMap
-importFile _ (StrVar path) = executeFile path
+importFile vars (StrVar path) =
+    do case Map.lookup "$$root" vars of Just (StrVar root) -> executeFile $ baseDir root ++ path
+                                        _ -> executeFile $ "./" ++ path
 importFile _ _ = errorOut "Cannot import this object"
 
 enhancedLib = Map.insert "$import" (libOf importFile) stdlib
@@ -56,9 +70,9 @@ executeRepl = replLoop enhancedLib
 executeFile :: String -> IO (VarMap)
 executeFile path =
     do stmt <- parseFile path
-       runStatement stmt enhancedLib
+       runStatement stmt $ Map.insert "$$root" (StrVar path) enhancedLib
 
 executeSymFile :: String -> IO (VarMap)
 executeSymFile path =
     do stmt <- parseSymbol path
-       runStatement stmt enhancedLib
+       runStatement stmt $ Map.insert "$$root" (StrVar path) enhancedLib
