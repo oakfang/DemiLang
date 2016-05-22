@@ -10,6 +10,16 @@ errorOut err =
     do setSGR [SetColor Foreground Vivid Red]
        fail err
 
+coerceBool :: VariableValue -> VariableValue
+coerceBool (BoolVar x) = BoolVar x
+coerceBool (IntVar 0)  = BoolVar False
+coerceBool (StrVar "") = BoolVar False
+coerceBool Nil         = BoolVar False
+coerceBool _           = BoolVar True
+
+extractBool :: VariableValue -> Bool
+extractBool (BoolVar x) = x
+
 subSolve :: BinaryOperator -> VariableValue -> VariableValue -> IO VariableValue
 subSolve Add              (IntVar x)  (IntVar y)  = return $ IntVar (x + y)
 subSolve Subtract         (IntVar x)  (IntVar y)  = return $ IntVar (x - y)
@@ -28,8 +38,9 @@ subSolve NotEqualTo       (StrVar x)  (StrVar y)  = return $ BoolVar $ x /= y
 
 subSolve EqualTo          (BoolVar x) (BoolVar y) = return $ BoolVar $ x == y
 subSolve NotEqualTo       (BoolVar x) (BoolVar y) = return $ BoolVar $ x /= y
-subSolve And              (BoolVar x) (BoolVar y) = return $ BoolVar (x && y)
-subSolve Or               (BoolVar x) (BoolVar y) = return $ BoolVar (x || y)
+
+subSolve And              x           y           = return $ BoolVar ((extractBool $ coerceBool x) && (extractBool $ coerceBool y))
+subSolve Or               x           y           = return $ BoolVar ((extractBool $ coerceBool x) || (extractBool $ coerceBool y))
 subSolve _ _ _ = errorOut "Unsupported operation for values"
 
 solve :: VarMap -> Expression -> IO VariableValue
@@ -74,20 +85,14 @@ assignVariable vars var x = return $ Map.insert var x vars
 
 doWhen :: VarMap -> VariableValue -> Statement -> Statement -> IO (VarMap)
 doWhen vars (BoolVar False) _ stmt = runStatement stmt vars
-doWhen vars (Nil) _ stmt = runStatement stmt vars
-doWhen vars (IntVar 0) _ stmt = runStatement stmt vars
-doWhen vars (StrVar "") _ stmt = runStatement stmt vars
-doWhen vars _ stmt _ = runStatement stmt vars
+doWhen vars (BoolVar True) stmt _ = runStatement stmt vars
 
 doWhile :: VarMap -> Expression -> VariableValue -> Statement -> IO (VarMap)
 doWhile vars _   (BoolVar False)   _  = return vars
-doWhile vars _   (Nil)             _  = return vars
-doWhile vars _   (IntVar 0)        _  = return vars
-doWhile vars _   (StrVar "")       _  = return vars
-doWhile vars exp _               stmt =
+doWhile vars exp (BoolVar True)  stmt =
     do newVars <- runStatement stmt vars
        value <- solve newVars exp
-       doWhile newVars exp value stmt
+       doWhile newVars exp (coerceBool value) stmt
 
 runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars
@@ -99,10 +104,10 @@ runStatement (Bare exp) vars =
        return $ vars
 runStatement (When exp onTrue onFalse) vars =
     do value <- solve vars exp
-       doWhen vars value onTrue onFalse
+       doWhen vars (coerceBool value) onTrue onFalse
 runStatement (While exp loopBody) vars = 
     do value <- solve vars exp
-       doWhile vars exp value loopBody
+       doWhile vars exp (coerceBool value) loopBody
 runStatement (Sequence []) vars = return vars
 runStatement (Sequence (st:sts)) vars =
     do newVars <- runStatement st vars
