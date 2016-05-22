@@ -57,5 +57,6 @@ data Statement = Sequence [Statement]
                | Skip
                | Bare Expression
                | Import String
+               | ImportLib String
                  deriving (Show, Read)
 

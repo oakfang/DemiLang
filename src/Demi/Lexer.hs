@@ -134,11 +134,20 @@ blockShouldStatement =
 shouldStmt :: Parser Statement
 shouldStmt = singleShouldStatement <|> blockShouldStatement
 
-importStmt :: Parser Statement
-importStmt =
+importFileStmt :: Parser Statement
+importFileStmt =
     do reserved "import"
        path <- stringLt
        return $ Import path
+
+importLibStmt :: Parser Statement
+importLibStmt =
+    do reserved "import"
+       path <- identifier
+       return $ ImportLib path
+
+importStmt :: Parser Statement
+importStmt = try importFileStmt <|> importLibStmt
 
 blankStmt :: Parser Statement
 blankStmt = whiteSpace >> return Skip

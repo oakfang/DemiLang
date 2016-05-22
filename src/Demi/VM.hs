@@ -111,3 +111,7 @@ runStatement (Import path) vars =
     do importer <- solve vars $ Var "$import"
        newVars <- callFunction vars importer $ StrVar path
        return $ Map.union newVars vars
+runStatement (ImportLib path) vars =
+    do importer <- solve vars $ Var "$import_lib"
+       newVars <- callFunction vars importer $ StrVar path
+       return $ Map.union newVars vars

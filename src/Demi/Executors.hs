@@ -27,7 +27,13 @@ importFile vars (StrVar path) =
                                         _ -> executeFile $ "./" ++ path
 importFile _ _ = errorOut "Cannot import this object"
 
-enhancedLib = Map.insert "$import" (libOf importFile) stdlib
+importLib :: VarMap -> VariableValue -> IO VarMap
+importLib _ (StrVar path) = executeFile $ "./urges/" ++ path ++ "/main.dm"
+
+importers = Map.fromList [("$import", libOf importFile)
+                         ,("$import_lib", libOf importLib)]
+
+enhancedLib = Map.union importers stdlib
 
 parseString :: String -> Statement
 parseString str =
