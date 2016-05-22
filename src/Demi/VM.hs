@@ -1,12 +1,10 @@
 module Demi.VM where
 
 import System.Exit
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import System.Console.ANSI
 
 import Demi.Parser
-
-type VarMap = Map.Map String VariableValue
 
 errorOut err =
     do setSGR [SetColor Foreground Vivid Red]
@@ -38,12 +36,13 @@ solve :: VarMap -> Expression -> IO VariableValue
 solve _ (IntConst x) = return $ IntVar x
 solve _ (StrConst x) = return $ StrVar x
 solve _ (BoolConst x) = return $ BoolVar x
-solve _ (FnConst p body) = return $ FnVar p body
+solve vars (FnConst p body) = return $ FnVar p vars (Right body)
 solve vars (CallExpression id param) =
     do paramVal <- solve vars param
        fn <- solve vars $ Var id
-       callFunction vars fn paramVal
-       return $ IntVar 0
+       newVars <- callFunction vars fn paramVal
+       case Map.lookup "return" newVars of Just x -> return x
+                                           Nothing -> return Nil
 solve vars (Negative exp) =
     do value <- solve vars exp
        case value of IntVar x -> return $ IntVar(-x)
@@ -60,14 +59,15 @@ solve vars (BinaryExpression op e1 e2) =
        subSolve op x y
 
 callFunction :: VarMap -> VariableValue -> VariableValue -> IO VarMap
-callFunction vars (FnVar paramName body) value = runStatement body $ Map.insert paramName value vars
+callFunction vars (FnVar paramName closure (Right body)) value =
+    let outerState = Map.insert paramName value vars
+        state = Map.union outerState closure
+    in runStatement body state
+callFunction vars (FnVar paramName closure (Left (Fn std))) value =
+    let outerState = Map.insert paramName value vars
+        state = Map.union outerState closure
+    in std state value
 callFunction _ _ _ = errorOut "Only function variables may be called"
-
-printVariable :: VariableValue -> IO ()
-printVariable (IntVar value) = print value
-printVariable (BoolVar value) = print value
-printVariable (StrVar value) = putStrLn value
-printVariable (FnVar param _) = putStrLn $ "function ("++param++") {...}"
 
 assignVariable :: VarMap -> String -> VariableValue -> IO (VarMap)
 assignVariable vars var x = return $ Map.insert var x vars
@@ -87,10 +87,6 @@ doWhile _ _ _ _ = errorOut "Can't iterate using a non-boolean expression result"
 
 runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars
-runStatement (Print exp) vars =
-    do value <- solve vars exp
-       printVariable value
-       return $ vars
 runStatement (Assign var exp) vars = 
     do value <- solve vars exp
        assignVariable vars var value

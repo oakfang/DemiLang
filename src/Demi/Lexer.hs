@@ -9,6 +9,30 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 
 import Demi.Parser
 
+languageDef =
+    emptyDef { Token.commentStart    = "/*"
+             , Token.commentEnd      = "*/"
+             , Token.commentLine     = "//"
+             , Token.identStart      = letter
+             , Token.identLetter     = alphaNum
+             , Token.reservedNames   = [ "if"
+                                       , "else"
+                                       , "should"
+                                       , "fn"
+                                       , "while"
+                                       , "skip"
+                                       , "true"
+                                       , "false"
+                                       , "not"
+                                       , "and"
+                                       , "or"
+                                       ]
+             , Token.reservedOpNames = ["+", "-", "*", "/", "="
+                                       , "<", ">", "and", "or", "not"
+                                       , "<=", ">=", "==", "!="
+                                       ]
+    }
+
 lexer = Token.makeTokenParser languageDef
 identifier = Token.identifier    lexer -- parses an identifier
 reserved   = Token.reserved      lexer -- parses a reserved name
@@ -23,17 +47,17 @@ integer    = Token.integer       lexer -- parses an integer
 semi       = Token.semi          lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace    lexer -- parses whitespace
 stringLt   = Token.stringLiteral lexer
+dot        = Token.dot           lexer
 
 statement' :: Parser Statement
 statement' =  ifStmt
           <|> shouldStmt
           <|> whileStmt
           <|> skipStmt
-          <|> printStmt
+          <|> try bareStmt
           <|> assignStmt
           <|> parensStmt
           <|> bracesStmt
-          <|> bareStmt
           <|> blankStmt
 
 sequenceOfStatements =
@@ -138,15 +162,9 @@ assignStmt =
 skipStmt :: Parser Statement
 skipStmt = reserved "skip" >> return Skip
 
-printStmt :: Parser Statement
-printStmt =
-    do reserved "print"
-       msg <- expression
-       return $ Print msg
-
 bareStmt :: Parser Statement
 bareStmt =
-    do reserved "do"
+    do _ <- dot
        expr <- expression
        return $ Bare expr
 
@@ -154,8 +172,7 @@ expression :: Parser Expression
 expression = buildExpressionParser operators term
 
 callExpr =
-    do reserved "call"
-       id <- identifier
+    do id <- identifier
        param <- brackets expression
        return $ CallExpression id param
 
@@ -166,11 +183,11 @@ fnTerm =
        return $ FnConst param stmt
 
 term =  parens expression
+    <|> try callExpr
     <|> liftM Var identifier
     <|> liftM IntConst integer
     <|> liftM StrConst stringLt
     <|> fnTerm
-    <|> callExpr
     <|> (reserved "true"  >> return (BoolConst True ))
     <|> (reserved "false" >> return (BoolConst False))
 

@@ -2,11 +2,12 @@ module Demi.Executors where
 
 import System.IO
 import Text.ParserCombinators.Parsec
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 
 import Demi.Parser
 import Demi.Lexer (demiParser)
-import Demi.VM (runStatement, VarMap)
+import Demi.VM (runStatement)
+import Demi.StdLib (stdlib)
 
 parseString :: String -> Statement
 parseString str =
@@ -44,14 +45,14 @@ replLoop vars =
        replLoop newVars
 
 executeRepl :: IO (VarMap)
-executeRepl = replLoop Map.empty
+executeRepl = replLoop stdlib
 
 executeFile :: String -> IO (VarMap)
 executeFile path =
     do stmt <- parseFile path
-       runStatement stmt Map.empty
+       runStatement stmt stdlib
 
 executeSymFile :: String -> IO (VarMap)
 executeSymFile path =
     do stmt <- parseSymbol path
-       runStatement stmt Map.empty
+       runStatement stmt stdlib

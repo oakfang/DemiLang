@@ -4,6 +4,7 @@ A basic attempt at a haskell-interpreted language
 ## Building
 ```
 git clone ...
+cabal install
 cabal build
 alias demi=./dist/build/demi/demi.exe # used on windows GitBash
 ```
