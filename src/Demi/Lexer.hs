@@ -19,6 +19,7 @@ languageDef =
                                        , "else"
                                        , "should"
                                        , "fn"
+                                       , "import"
                                        , "while"
                                        , "skip"
                                        , "true"
@@ -54,6 +55,7 @@ statement' =  ifStmt
           <|> shouldStmt
           <|> whileStmt
           <|> skipStmt
+          <|> importStmt
           <|> try bareStmt
           <|> assignStmt
           <|> parensStmt
@@ -131,6 +133,12 @@ blockShouldStatement =
 
 shouldStmt :: Parser Statement
 shouldStmt = singleShouldStatement <|> blockShouldStatement
+
+importStmt :: Parser Statement
+importStmt =
+    do reserved "import"
+       path <- stringLt
+       return $ Import path
 
 blankStmt :: Parser Statement
 blankStmt = whiteSpace >> return Skip

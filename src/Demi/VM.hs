@@ -107,3 +107,7 @@ runStatement (Sequence []) vars = return vars
 runStatement (Sequence (st:sts)) vars =
     do newVars <- runStatement st vars
        runStatement (Sequence sts) newVars
+runStatement (Import path) vars =
+    do importer <- solve vars $ Var "$import"
+       newVars <- callFunction vars importer $ StrVar path
+       return $ Map.union newVars vars

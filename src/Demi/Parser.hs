@@ -56,5 +56,6 @@ data Statement = Sequence [Statement]
                | While Expression Statement
                | Skip
                | Bare Expression
+               | Import String
                  deriving (Show, Read)
 

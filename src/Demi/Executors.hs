@@ -6,8 +6,14 @@ import qualified Data.Map.Strict as Map
 
 import Demi.Parser
 import Demi.Lexer (demiParser)
-import Demi.VM (runStatement)
-import Demi.StdLib (stdlib)
+import Demi.VM (runStatement, errorOut)
+import Demi.StdLib (stdlib, libOf)
+
+importFile :: VarMap -> VariableValue -> IO VarMap
+importFile _ (StrVar path) = executeFile path
+importFile _ _ = errorOut "Cannot import this object"
+
+enhancedLib = Map.insert "$import" (libOf importFile) stdlib
 
 parseString :: String -> Statement
 parseString str =
@@ -45,14 +51,14 @@ replLoop vars =
        replLoop newVars
 
 executeRepl :: IO (VarMap)
-executeRepl = replLoop stdlib
+executeRepl = replLoop enhancedLib
 
 executeFile :: String -> IO (VarMap)
 executeFile path =
     do stmt <- parseFile path
-       runStatement stmt stdlib
+       runStatement stmt enhancedLib
 
 executeSymFile :: String -> IO (VarMap)
 executeSymFile path =
     do stmt <- parseSymbol path
-       runStatement stmt stdlib
+       runStatement stmt enhancedLib
