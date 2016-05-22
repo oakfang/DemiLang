@@ -73,17 +73,21 @@ assignVariable :: VarMap -> String -> VariableValue -> IO (VarMap)
 assignVariable vars var x = return $ Map.insert var x vars
 
 doWhen :: VarMap -> VariableValue -> Statement -> Statement -> IO (VarMap)
-doWhen vars (BoolVar True) stmt _ = runStatement stmt vars
 doWhen vars (BoolVar False) _ stmt = runStatement stmt vars
-doWhen _ _ _ _ = errorOut "Can't tell the truthness of a non-boolean expression result"
+doWhen vars (Nil) _ stmt = runStatement stmt vars
+doWhen vars (IntVar 0) _ stmt = runStatement stmt vars
+doWhen vars (StrVar "") _ stmt = runStatement stmt vars
+doWhen vars _ stmt _ = runStatement stmt vars
 
 doWhile :: VarMap -> Expression -> VariableValue -> Statement -> IO (VarMap)
-doWhile vars _   (BoolVar False) _  = return vars
-doWhile vars exp (BoolVar True) stmt =
+doWhile vars _   (BoolVar False)   _  = return vars
+doWhile vars _   (Nil)             _  = return vars
+doWhile vars _   (IntVar 0)        _  = return vars
+doWhile vars _   (StrVar "")       _  = return vars
+doWhile vars exp _               stmt =
     do newVars <- runStatement stmt vars
        value <- solve newVars exp
        doWhile newVars exp value stmt
-doWhile _ _ _ _ = errorOut "Can't iterate using a non-boolean expression result"
 
 runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars

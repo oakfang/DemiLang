@@ -17,7 +17,7 @@ printFn vars (BoolVar value) =
     do print value
        return vars
 printFn vars (StrVar value) =
-    do print value
+    do putStrLn value
        return vars
 printFn vars (FnVar param _ _) =
     do putStrLn $ "function ("++param++") {...}"

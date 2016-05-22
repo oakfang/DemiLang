@@ -19,29 +19,43 @@ demi.exe                  -- run demi in stdin interpreter mode
 ```
 
 ## Demo code
-```
-greet = fn [name] {
-    print "Hello, " + name + "!";
+```c
+/*
+Currently, stdlib contains:
+print[ARG] => prints to stdout
+read["int"] => read an integer from stdin
+read["bool"] => read a boolean from stdin
+read["str"] => read a string from stdin
+*/
+
+greet = fn[name] {
+    .print["Hello, " + name + "!"];
 };
 
-do call greet["world"];
-f = fn [x] {
-    print x;
-};
-a = 5;
-b = 3;
-if a > b {
-    while b < (a * 3) {
-        c = 1;
-        b = b + c;
+opFn = fn[op] {
+    if op == "+" return=fn[x] {return=fn[y] {return=x + y}}
+    else if op == "-" return=fn[x] {return=fn[y] {return=x - y}}
+    else if op == "*" return=fn[x] {return=fn[y] {return=x * y}}
+    else if op == "/" return=fn[x] {return=fn[y] {return=x / y}}
+    else {
+        .print["Unsupported operator"]
     }
-} else if a == b print 7
-  else print 9;
-print b; // prints 15
-hello = "hello " + "world!";
-should hello == "hello world!" {
-    do call f[5];
-    print "I'm gonna fail now, with a red error";
-    print x;
-}
+};
+
+.greet["world"];
+
+.print["Enter first number:"];
+a = read["int"];
+
+.print["Enter operator (+, -, *, /)"];
+op = read["str"];
+
+.print["Enter second number:"];
+b = read["int"];
+
+step1 = opFn[op];
+should step1 {
+    step2 = step1[a];
+    .print[step2[b]];
+};
 ```
