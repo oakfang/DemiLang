@@ -28,10 +28,11 @@ languageDef =
                                        , "not"
                                        , "and"
                                        , "or"
+                                       , "as"
                                        ]
              , Token.reservedOpNames = ["+", "-", "*", "/", "="
                                        , "<", ">", "and", "or", "not"
-                                       , "<=", ">=", "==", "!="
+                                       , "<=", ">=", "==", "!=", "::"
                                        ]
     }
 
@@ -139,7 +140,9 @@ importFileStmt :: Parser Statement
 importFileStmt =
     do reserved "import"
        path <- stringLt
-       return $ Import path
+       reserved "as"
+       name <- identifier
+       return $ Import path name
 
 importLibStmt :: Parser Statement
 importLibStmt =
@@ -204,7 +207,22 @@ fnTerm =
        stmt <- bracesStmt
        return $ FnConst params stmt
 
+methodOf =
+    do moduleName <- identifier
+       reservedOp "::"
+       methodName <- identifier
+       params <- many1 $ parens (option [] (sepBy1 expression comma))
+       return $ consolidateCallExpression (Var (moduleName ++ "$$" ++ methodName)) params
+
+globalOf =
+    do moduleName <- identifier
+       reservedOp "::"
+       methodName <- identifier
+       return $ Var (moduleName ++ "$$" ++ methodName)
+
 term =  parens expression
+    <|> try methodOf
+    <|> try globalOf 
     <|> try callExpr
     <|> liftM Var identifier
     <|> liftM IntConst integer

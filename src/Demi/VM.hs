@@ -48,6 +48,7 @@ subSolve NotEqualTo       (BoolVar x) (BoolVar y) = return $ BoolVar $ x /= y
 
 subSolve And              x           y           = return $ BoolVar ((extractBool $ coerceBool x) && (extractBool $ coerceBool y))
 subSolve Or               x           y           = return $ BoolVar ((extractBool $ coerceBool x) || (extractBool $ coerceBool y))
+
 subSolve _ _ _ = errorOut "Unsupported operation for values"
 
 unarySolve :: UnaryOperator -> VariableValue -> IO VariableValue
@@ -106,6 +107,9 @@ doWhile vars exp (BoolVar True)  stmt =
        value <- solve newVars exp
        doWhile newVars exp (coerceBool value) stmt
 
+importQualifiedAll :: String -> VarMap -> VarMap -> VarMap
+importQualifiedAll name globals exports = Map.union (Map.mapKeys (\key -> name ++ "$$" ++ key) exports) globals
+
 runStatement :: Statement -> VarMap -> IO (VarMap)
 runStatement Skip vars = return vars
 runStatement (Assign var exp) vars = 
@@ -124,11 +128,11 @@ runStatement (Sequence []) vars = return vars
 runStatement (Sequence (st:sts)) vars =
     do newVars <- runStatement st vars
        runStatement (Sequence sts) newVars
-runStatement (Import path) vars =
+runStatement (Import path name) vars =
     do importer <- solve vars $ Var "$import"
        newVars <- callFunction vars importer $ [StrVar path]
-       return $ Map.union newVars vars
+       return $ importQualifiedAll name vars newVars
 runStatement (ImportLib path) vars =
     do importer <- solve vars $ Var "$import_lib"
        newVars <- callFunction vars importer $ [StrVar path]
-       return $ Map.union newVars vars
+       return $ importQualifiedAll path vars newVars

@@ -60,7 +60,7 @@ data Statement = Sequence [Statement]
                | While Expression Statement
                | Skip
                | Bare Expression
-               | Import String
+               | Import String String
                | ImportLib String
                  deriving (Show, Read)
 

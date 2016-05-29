@@ -1,5 +1,5 @@
-import "utils.dm";
+import "utils.dm" as Utils;
 
-.print(add(3)(2));
-.greet();
-.print(addNoCurry(4, 8));
+.print(Utils::add(3)(2));
+.Utils::greet();
+.print(Utils::addNoCurry(4, 8));
