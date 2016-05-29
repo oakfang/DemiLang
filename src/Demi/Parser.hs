@@ -39,14 +39,17 @@ data BinaryOperator = Add
                     | NotEqualTo
                       deriving (Show, Read)
 
+data UnaryOperator = Negative
+                   | Not
+                     deriving (Show, Read)
+
 data Expression = Var String
                 | IntConst Integer
                 | StrConst String
                 | BoolConst Bool
                 | NilConst
                 | FnConst [String] Statement
-                | Not Expression
-                | Negative Expression
+                | UnaryExpression UnaryOperator Expression
                 | BinaryExpression BinaryOperator Expression Expression
                 | CallExpression Expression [Expression]
                   deriving (Show, Read)

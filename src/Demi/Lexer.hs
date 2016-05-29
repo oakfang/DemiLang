@@ -214,7 +214,7 @@ term =  parens expression
     <|> (reserved "false" >> return (BoolConst False))
     <|> (reserved "Nil" >> return (NilConst))
 
-operators = [ [Prefix (reservedOp "-"   >> return (Negative                         ))          ]
+operators = [ [Prefix (reservedOp "-"   >> return (UnaryExpression Negative         ))          ]
             , [Infix  (reservedOp "*"   >> return (BinaryExpression Multiply        )) AssocLeft,
                Infix  (reservedOp "/"   >> return (BinaryExpression Divide          )) AssocLeft]
             , [Infix  (reservedOp "+"   >> return (BinaryExpression Add             )) AssocLeft,
@@ -225,7 +225,7 @@ operators = [ [Prefix (reservedOp "-"   >> return (Negative                     
                Infix  (reservedOp "<="  >> return (BinaryExpression LesserEqualThan )) AssocLeft]
             , [Infix  (reservedOp "=="  >> return (BinaryExpression EqualTo         )) AssocLeft,
                Infix  (reservedOp "!="  >> return (BinaryExpression NotEqualTo      )) AssocLeft]
-            , [Prefix (reservedOp "not" >> return (Not                              ))          ]
+            , [Prefix (reservedOp "not" >> return (UnaryExpression Not              ))          ]
             , [Infix  (reservedOp "and" >> return (BinaryExpression And             )) AssocLeft,
                Infix  (reservedOp "or"  >> return (BinaryExpression Or              )) AssocLeft]
             ]

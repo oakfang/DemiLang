@@ -13,6 +13,10 @@ errorOut err =
     do setSGR [SetColor Foreground Vivid Red]
        fail err
 
+getVar :: VarMap -> String -> VariableValue
+getVar state id = case Map.lookup id state of Just x -> x
+                                              Nothing -> Nil
+
 coerceBool :: VariableValue -> VariableValue
 coerceBool (BoolVar x) = BoolVar x
 coerceBool (IntVar 0)  = BoolVar False
@@ -46,28 +50,28 @@ subSolve And              x           y           = return $ BoolVar ((extractBo
 subSolve Or               x           y           = return $ BoolVar ((extractBool $ coerceBool x) || (extractBool $ coerceBool y))
 subSolve _ _ _ = errorOut "Unsupported operation for values"
 
+unarySolve :: UnaryOperator -> VariableValue -> IO VariableValue
+unarySolve Negative (IntVar x) = return $ IntVar (-x)
+unarySolve Negative _ = errorOut "Only numerical values can be used with the unary operator '-'"
+unarySolve Not (BoolVar x) = return $ BoolVar (not x)
+unarySolve Not var = return $ BoolVar (not $ extractBool $ coerceBool var)
+
 solve :: VarMap -> Expression -> IO VariableValue
-solve _ (IntConst x) = return $ IntVar x
-solve _ (StrConst x) = return $ StrVar x
-solve _ (BoolConst x) = return $ BoolVar x
-solve _ (NilConst) = return Nil
-solve vars (FnConst p body) = return $ FnVar p vars (Right body)
-solve vars (CallExpression id params) =
+solve _    (IntConst x)                = return $ IntVar x
+solve _    (StrConst x)                = return $ StrVar x
+solve _    (BoolConst x)               = return $ BoolVar x
+solve _    (NilConst)                  = return Nil
+solve vars (FnConst p body)            = return $ FnVar p vars (Right body)
+solve vars (Var var)                   = case Map.lookup var vars of Just x -> return $ x
+                                                                     Nothing -> errorOut $ "Name error: " ++ var
+solve vars (CallExpression id params)  =
     do paramValues <- mapM (solve vars) params
        fn <- solve vars id
        newVars <- callFunction vars fn paramValues
-       case Map.lookup "return" newVars of Just x -> return x
-                                           Nothing -> return Nil
-solve vars (Negative exp) =
-    do value <- solve vars exp
-       case value of IntVar x -> return $ IntVar(-x)
-                     _ -> errorOut "Only numerical values can be used with the unary operator '-'"
-solve vars (Not exp) =
-    do value <- solve vars exp
-       case value of BoolVar x -> return $ BoolVar (not x)
-                     _ -> errorOut "Only boolean values can be used with the unary operator 'not'"
-solve vars (Var var) = case Map.lookup var vars of Just x -> return $ x
-                                                   Nothing -> errorOut $ "Name error: " ++ var
+       return $ getVar newVars "return"
+solve vars (UnaryExpression op exp)    =
+    do x <- solve vars exp
+       unarySolve op x
 solve vars (BinaryExpression op e1 e2) =
     do x <- solve vars e1
        y <- solve vars e2
