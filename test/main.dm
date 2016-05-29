@@ -1,3 +1,5 @@
 import "utils.dm";
 
-.print[addFive[3]];
+.print(add(3)(2));
+.greet();
+.print(addNoCurry(4, 8));

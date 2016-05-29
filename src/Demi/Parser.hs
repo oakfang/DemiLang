@@ -5,9 +5,9 @@ import qualified Data.Map.Strict as Map
 
 type VarMap = Map.Map String VariableValue
 
-data StdFn = Fn (VarMap -> VariableValue -> IO VarMap)
+data StdFn = Fn (VarMap -> [VariableValue] -> IO VarMap)
 
-identity :: VarMap -> VariableValue -> IO VarMap
+identity :: VarMap -> [VariableValue] -> IO VarMap
 identity v _ = return v
 
 instance Show StdFn where
@@ -21,7 +21,7 @@ type Callable = Either StdFn Statement
 data VariableValue = IntVar Integer
                    | StrVar String
                    | BoolVar Bool
-                   | FnVar String VarMap Callable
+                   | FnVar [String] VarMap Callable
                    | Nil
                      deriving (Show, Read)
 
@@ -43,11 +43,12 @@ data Expression = Var String
                 | IntConst Integer
                 | StrConst String
                 | BoolConst Bool
-                | FnConst String Statement
+                | NilConst
+                | FnConst [String] Statement
                 | Not Expression
                 | Negative Expression
                 | BinaryExpression BinaryOperator Expression Expression
-                | CallExpression String Expression
+                | CallExpression Expression [Expression]
                   deriving (Show, Read)
 
 data Statement = Sequence [Statement]

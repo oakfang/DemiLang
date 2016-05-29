@@ -21,17 +21,17 @@ splitOn p s = case dropWhile p s of "" -> []
 baseDir :: String -> String
 baseDir path = joinPath $ init $ splitOn (=='/') path
 
-importFile :: VarMap -> VariableValue -> IO VarMap
-importFile vars (StrVar path) =
+importFile :: VarMap -> [VariableValue] -> IO VarMap
+importFile vars [(StrVar path)] =
     do case Map.lookup "$$root" vars of Just (StrVar root) -> executeFile $ baseDir root ++ path
                                         _ -> executeFile $ "./" ++ path
 importFile _ _ = errorOut "Cannot import this object"
 
-importLib :: VarMap -> VariableValue -> IO VarMap
-importLib _ (StrVar path) = executeFile $ "./urges/" ++ path ++ "/main.dm"
+importLib :: VarMap -> [VariableValue] -> IO VarMap
+importLib _ [(StrVar path)] = executeFile $ "./urges/" ++ path ++ "/main.dm"
 
-importers = Map.fromList [("$import", libOf importFile)
-                         ,("$import_lib", libOf importLib)]
+importers = Map.fromList [("$import", libOf ["filePath"] importFile)
+                         ,("$import_lib", libOf ["libName"] importLib)]
 
 enhancedLib = Map.union importers stdlib
 

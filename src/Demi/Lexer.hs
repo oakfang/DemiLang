@@ -19,6 +19,7 @@ languageDef =
                                        , "else"
                                        , "should"
                                        , "fn"
+                                       , "Nil"
                                        , "import"
                                        , "while"
                                        , "skip"
@@ -43,12 +44,12 @@ parens     = Token.parens        lexer -- parses surrounding parenthesis:
                                        -- takes care of the parenthesis and
                                        -- uses p to parse what's inside them
 braces     = Token.braces        lexer
-brackets   = Token.brackets      lexer
 integer    = Token.integer       lexer -- parses an integer
 semi       = Token.semi          lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace    lexer -- parses whitespace
 stringLt   = Token.stringLiteral lexer
 dot        = Token.dot           lexer
+comma      = Token.comma         lexer
 
 statement' :: Parser Statement
 statement' =  ifStmt
@@ -188,16 +189,20 @@ bareStmt =
 expression :: Parser Expression
 expression = buildExpressionParser operators term
 
+consolidateCallExpression :: Expression -> [[Expression]] -> Expression
+consolidateCallExpression exp [] = exp
+consolidateCallExpression exp (x:xs) = consolidateCallExpression (CallExpression exp x) xs
+
 callExpr =
     do id <- identifier
-       param <- brackets expression
-       return $ CallExpression id param
+       params <- many1 $ parens (option [] (sepBy1 expression comma))
+       return $ consolidateCallExpression (Var id) params
 
 fnTerm =
     do reserved "fn"
-       param <- brackets identifier
+       params <- parens $ option [] (sepBy1 (identifier) comma)
        stmt <- bracesStmt
-       return $ FnConst param stmt
+       return $ FnConst params stmt
 
 term =  parens expression
     <|> try callExpr
@@ -207,6 +212,7 @@ term =  parens expression
     <|> fnTerm
     <|> (reserved "true"  >> return (BoolConst True ))
     <|> (reserved "false" >> return (BoolConst False))
+    <|> (reserved "Nil" >> return (NilConst))
 
 operators = [ [Prefix (reservedOp "-"   >> return (Negative                         ))          ]
             , [Infix  (reservedOp "*"   >> return (BinaryExpression Multiply        )) AssocLeft,

@@ -1,10 +1,13 @@
 module Demi.VM where
 
 import System.Exit
+import Control.Monad
 import qualified Data.Map.Strict as Map
 import System.Console.ANSI
 
 import Demi.Parser
+
+type Param = String
 
 errorOut err =
     do setSGR [SetColor Foreground Vivid Red]
@@ -47,11 +50,12 @@ solve :: VarMap -> Expression -> IO VariableValue
 solve _ (IntConst x) = return $ IntVar x
 solve _ (StrConst x) = return $ StrVar x
 solve _ (BoolConst x) = return $ BoolVar x
+solve _ (NilConst) = return Nil
 solve vars (FnConst p body) = return $ FnVar p vars (Right body)
-solve vars (CallExpression id param) =
-    do paramVal <- solve vars param
-       fn <- solve vars $ Var id
-       newVars <- callFunction vars fn paramVal
+solve vars (CallExpression id params) =
+    do paramValues <- mapM (solve vars) params
+       fn <- solve vars id
+       newVars <- callFunction vars fn paramValues
        case Map.lookup "return" newVars of Just x -> return x
                                            Nothing -> return Nil
 solve vars (Negative exp) =
@@ -69,15 +73,19 @@ solve vars (BinaryExpression op e1 e2) =
        y <- solve vars e2
        subSolve op x y
 
-callFunction :: VarMap -> VariableValue -> VariableValue -> IO VarMap
-callFunction vars (FnVar paramName closure (Right body)) value =
-    let outerState = Map.insert paramName value vars
+enrichState :: VarMap -> [Param] -> [VariableValue] -> VarMap
+enrichState state [] [] = state
+enrichState state (p:ps) (v:vs) = enrichState (Map.insert p v state) ps vs
+
+callFunction :: VarMap -> VariableValue -> [VariableValue] -> IO VarMap
+callFunction vars (FnVar params closure (Right body)) values =
+    let outerState = enrichState vars params values
         state = Map.union outerState closure
     in runStatement body state
-callFunction vars (FnVar paramName closure (Left (Fn std))) value =
-    let outerState = Map.insert paramName value vars
+callFunction vars (FnVar params closure (Left (Fn std))) values =
+    let outerState = enrichState vars params values
         state = Map.union outerState closure
-    in std state value
+    in std state values
 callFunction _ _ _ = errorOut "Only function variables may be called"
 
 assignVariable :: VarMap -> String -> VariableValue -> IO (VarMap)
@@ -114,9 +122,9 @@ runStatement (Sequence (st:sts)) vars =
        runStatement (Sequence sts) newVars
 runStatement (Import path) vars =
     do importer <- solve vars $ Var "$import"
-       newVars <- callFunction vars importer $ StrVar path
+       newVars <- callFunction vars importer $ [StrVar path]
        return $ Map.union newVars vars
 runStatement (ImportLib path) vars =
     do importer <- solve vars $ Var "$import_lib"
-       newVars <- callFunction vars importer $ StrVar path
+       newVars <- callFunction vars importer $ [StrVar path]
        return $ Map.union newVars vars
