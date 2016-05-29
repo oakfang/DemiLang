@@ -32,7 +32,7 @@ languageDef =
                                        ]
              , Token.reservedOpNames = ["+", "-", "*", "/", "="
                                        , "<", ">", "and", "or", "not"
-                                       , "<=", ">=", "==", "!=", "::"
+                                       , "<=", ">=", "==", "!="
                                        ]
     }
 
@@ -209,14 +209,14 @@ fnTerm =
 
 methodOf =
     do moduleName <- identifier
-       reservedOp "::"
+       dot
        methodName <- identifier
        params <- many1 $ parens (option [] (sepBy1 expression comma))
        return $ consolidateCallExpression (Var (moduleName ++ "$$" ++ methodName)) params
 
 globalOf =
     do moduleName <- identifier
-       reservedOp "::"
+       dot
        methodName <- identifier
        return $ Var (moduleName ++ "$$" ++ methodName)
 
