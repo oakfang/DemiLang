@@ -27,7 +27,7 @@ import "foo.dm"; // this imports the file "foo.dm" from the same directory main.
 ```
 
 You can also install demiurges (Demi packages) using [urge](https://github.com/oakfang/urge),
-running `urge -i <github_user>/<github_repo>`.
+running `urge install <github_user>/<github_repo>`.
 
 Importing demiurges is done using this syntax (assuming the demiurge's name is Math, for example):
 
