@@ -37,20 +37,20 @@ languageDef =
     }
 
 lexer = Token.makeTokenParser languageDef
-identifier = Token.identifier    lexer -- parses an identifier
-reserved   = Token.reserved      lexer -- parses a reserved name
-reservedOp = Token.reservedOp    lexer -- parses an operator
-parens     = Token.parens        lexer -- parses surrounding parenthesis:
-                                       --   parens p
-                                       -- takes care of the parenthesis and
-                                       -- uses p to parse what's inside them
-braces     = Token.braces        lexer
-integer    = Token.integer       lexer -- parses an integer
-semi       = Token.semi          lexer -- parses a semicolon
-whiteSpace = Token.whiteSpace    lexer -- parses whitespace
-stringLt   = Token.stringLiteral lexer
-dot        = Token.dot           lexer
-comma      = Token.comma         lexer
+identifier = Token.identifier     lexer -- parses an identifier
+reserved   = Token.reserved       lexer -- parses a reserved name
+reservedOp = Token.reservedOp     lexer -- parses an operator
+parens     = Token.parens         lexer -- parses surrounding parenthesis:
+                                        --   parens p
+                                        -- takes care of the parenthesis and
+                                        -- uses p to parse what's inside them
+braces     = Token.braces         lexer
+semi       = Token.semi           lexer -- parses a semicolon
+whiteSpace = Token.whiteSpace     lexer -- parses whitespace
+stringLt   = Token.stringLiteral  lexer
+dot        = Token.dot            lexer
+comma      = Token.comma          lexer
+number     = Token.naturalOrFloat lexer
 
 statement' :: Parser Statement
 statement' =  ifStmt
@@ -220,12 +220,17 @@ globalOf =
        methodName <- identifier
        return $ Var (moduleName ++ "$$" ++ methodName)
 
+numConst =
+    do num <- number
+       case num of Left i  -> return $ IntConst i
+                   Right f -> return $ DblConst f
+
 term =  parens expression
     <|> try methodOf
     <|> try globalOf 
     <|> try callExpr
     <|> liftM Var identifier
-    <|> liftM IntConst integer
+    <|> numConst
     <|> liftM StrConst stringLt
     <|> fnTerm
     <|> (reserved "true"  >> return (BoolConst True ))

@@ -18,11 +18,12 @@ getVar state id = case Map.lookup id state of Just x -> x
                                               Nothing -> Nil
 
 coerceBool :: VariableValue -> VariableValue
-coerceBool (BoolVar x) = BoolVar x
-coerceBool (IntVar 0)  = BoolVar False
-coerceBool (StrVar "") = BoolVar False
-coerceBool Nil         = BoolVar False
-coerceBool _           = BoolVar True
+coerceBool (BoolVar x)  = BoolVar x
+coerceBool (IntVar 0)   = BoolVar False
+coerceBool (DblVar 0.0) = BoolVar False
+coerceBool (StrVar "")  = BoolVar False
+coerceBool Nil          = BoolVar False
+coerceBool _            = BoolVar True
 
 extractBool :: VariableValue -> Bool
 extractBool (BoolVar x) = x
@@ -39,6 +40,39 @@ subSolve LesserEqualThan  (IntVar x)  (IntVar y)  = return $ BoolVar $ x <= y
 subSolve EqualTo          (IntVar x)  (IntVar y)  = return $ BoolVar $ x == y
 subSolve NotEqualTo       (IntVar x)  (IntVar y)  = return $ BoolVar $ x /= y
 
+subSolve Add              (DblVar x)  (DblVar y)  = return $ DblVar (x + y)
+subSolve Subtract         (DblVar x)  (DblVar y)  = return $ DblVar (x - y)
+subSolve Multiply         (DblVar x)  (DblVar y)  = return $ DblVar (x * y)
+subSolve Divide           (DblVar x)  (DblVar y)  = return $ DblVar (x / y)
+subSolve GreaterThan      (DblVar x)  (DblVar y)  = return $ BoolVar $ x > y
+subSolve GreaterEqualThan (DblVar x)  (DblVar y)  = return $ BoolVar $ x >= y
+subSolve LesserThan       (DblVar x)  (DblVar y)  = return $ BoolVar $ x < y
+subSolve LesserEqualThan  (DblVar x)  (DblVar y)  = return $ BoolVar $ x <= y
+subSolve EqualTo          (DblVar x)  (DblVar y)  = return $ BoolVar $ x == y
+subSolve NotEqualTo       (DblVar x)  (DblVar y)  = return $ BoolVar $ x /= y
+
+subSolve Add              (DblVar x)  (IntVar y)  = return $ DblVar (x +    (fromIntegral y))
+subSolve Subtract         (DblVar x)  (IntVar y)  = return $ DblVar (x -    (fromIntegral y))
+subSolve Multiply         (DblVar x)  (IntVar y)  = return $ DblVar (x *    (fromIntegral y))
+subSolve Divide           (DblVar x)  (IntVar y)  = return $ DblVar (x /    (fromIntegral y))
+subSolve GreaterThan      (DblVar x)  (IntVar y)  = return $ BoolVar $ x >  (fromIntegral y)
+subSolve GreaterEqualThan (DblVar x)  (IntVar y)  = return $ BoolVar $ x >= (fromIntegral y)
+subSolve LesserThan       (DblVar x)  (IntVar y)  = return $ BoolVar $ x <  (fromIntegral y)
+subSolve LesserEqualThan  (DblVar x)  (IntVar y)  = return $ BoolVar $ x <= (fromIntegral y)
+subSolve EqualTo          (DblVar x)  (IntVar y)  = return $ BoolVar $ x == (fromIntegral y)
+subSolve NotEqualTo       (DblVar x)  (IntVar y)  = return $ BoolVar $ x /= (fromIntegral y)
+
+subSolve Add              (IntVar x)  (DblVar y)  = return $ DblVar (  (fromIntegral x) +  y)
+subSolve Subtract         (IntVar x)  (DblVar y)  = return $ DblVar (  (fromIntegral x) -  y)
+subSolve Multiply         (IntVar x)  (DblVar y)  = return $ DblVar (  (fromIntegral x) *  y)
+subSolve Divide           (IntVar x)  (DblVar y)  = return $ DblVar (  (fromIntegral x) /  y)
+subSolve GreaterThan      (IntVar x)  (DblVar y)  = return $ BoolVar $ (fromIntegral x) >  y
+subSolve GreaterEqualThan (IntVar x)  (DblVar y)  = return $ BoolVar $ (fromIntegral x) >= y
+subSolve LesserThan       (IntVar x)  (DblVar y)  = return $ BoolVar $ (fromIntegral x) <  y
+subSolve LesserEqualThan  (IntVar x)  (DblVar y)  = return $ BoolVar $ (fromIntegral x) <= y
+subSolve EqualTo          (IntVar x)  (DblVar y)  = return $ BoolVar $ (fromIntegral x) == y
+subSolve NotEqualTo       (IntVar x)  (DblVar y)  = return $ BoolVar $ (fromIntegral x) /= y
+
 subSolve Add              (StrVar x)  (StrVar y)  = return $ StrVar (x ++ y)
 subSolve EqualTo          (StrVar x)  (StrVar y)  = return $ BoolVar $ x == y
 subSolve NotEqualTo       (StrVar x)  (StrVar y)  = return $ BoolVar $ x /= y
@@ -53,12 +87,14 @@ subSolve _ _ _ = errorOut "Unsupported operation for values"
 
 unarySolve :: UnaryOperator -> VariableValue -> IO VariableValue
 unarySolve Negative (IntVar x) = return $ IntVar (-x)
+unarySolve Negative (DblVar x) = return $ DblVar (-x)
 unarySolve Negative _ = errorOut "Only numerical values can be used with the unary operator '-'"
 unarySolve Not (BoolVar x) = return $ BoolVar (not x)
 unarySolve Not var = return $ BoolVar (not $ extractBool $ coerceBool var)
 
 solve :: VarMap -> Expression -> IO VariableValue
 solve _    (IntConst x)                = return $ IntVar x
+solve _    (DblConst x)                = return $ DblVar x
 solve _    (StrConst x)                = return $ StrVar x
 solve _    (BoolConst x)               = return $ BoolVar x
 solve _    (NilConst)                  = return Nil

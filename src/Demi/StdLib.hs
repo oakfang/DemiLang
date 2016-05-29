@@ -18,6 +18,9 @@ printFn :: VarMap -> [VariableValue] -> IO VarMap
 printFn vars [(IntVar value)] =
     do print value
        return vars
+printFn vars [(DblVar value)] =
+    do print value
+       return vars
 printFn vars [(BoolVar value)] =
     do print value
        return vars
@@ -35,6 +38,9 @@ readFn :: VarMap -> [VariableValue] -> IO VarMap
 readFn vars [(StrVar "int")] =
     do line <- getLine
        return $ Map.insert "return" (IntVar $ read line) vars
+readFn vars [(StrVar "float")] =
+    do line <- getLine
+       return $ Map.insert "return" (DblVar $ read line) vars
 readFn vars [(StrVar "bool")] =
     do line <- getLine
        return $ Map.insert "return" (BoolVar $ read $ capitalized line) vars

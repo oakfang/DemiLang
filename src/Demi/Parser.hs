@@ -19,6 +19,7 @@ instance Read StdFn where
 type Callable = Either StdFn Statement
 
 data VariableValue = IntVar Integer
+                   | DblVar Double
                    | StrVar String
                    | BoolVar Bool
                    | FnVar [String] VarMap Callable
@@ -45,6 +46,7 @@ data UnaryOperator = Negative
 
 data Expression = Var String
                 | IntConst Integer
+                | DblConst Double
                 | StrConst String
                 | BoolConst Bool
                 | NilConst
